@@ -1,9 +1,11 @@
+const path = require('path');
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 const morgan = require('morgan');
@@ -13,11 +15,35 @@ const globalErrorHandler = require('./controlers/errorController');
 const tourRouter = require('./routes/tourRoutes');
 const userRouter = require('./routes/userRoutes');
 const reviewRouter = require('./routes/reviewRoutes');
+const viewRouter = require('./routes/viewRoutes');
+
+app.set('view engine', 'pug');
+app.set('views', path.join(__dirname, 'views'));
 
 // 1 GLOBAL MIDDLEWARE
+// Serving static files
+app.use(express.static(path.join(__dirname, 'public')));
+
 // console.log(process.env.NODE_ENV);
 // Set security HTTP headers
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        scriptSrc: ["'self'", 'https://api.mapbox.com'],
+        workerSrc: ["'self'", 'blob:'],
+        childSrc: ["'self'", 'blob:'],
+        imgSrc: ["'self'", 'data:', 'blob:'],
+        connectSrc: [
+          "'self'",
+          'https://api.mapbox.com',
+          'https://*.tiles.mapbox.com',
+          'https://events.mapbox.com',
+        ],
+      },
+    },
+  }),
+);
 
 // Development logging
 if (process.env.NODE_ENV === 'development') {
@@ -34,6 +60,7 @@ const limiter = rateLimit({
 // Body parser, reading data from body into req.body
 app.use('/api', limiter);
 app.use(express.json({ limit: '10kb' }));
+app.use(cookieParser());
 
 // Data sanitization against NoSQL query injection
 app.use(mongoSanitize());
@@ -55,18 +82,17 @@ app.use(
   }),
 );
 
-// Serving static files
-app.use(express.static(`${__dirname}/public`));
-
 // Test middleware
 app.use((req, res, next) => {
   req.requestTime = new Date().toISOString();
+  console.log(req.cookies);
   // console.log(req.headers);
   next();
 });
 
 // 3 ROUTES
 
+app.use('/', viewRouter);
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/reviews', reviewRouter);
