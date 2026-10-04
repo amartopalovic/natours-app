@@ -28,6 +28,10 @@ coverage/
 dist/
 build/
 
+# Parcel bundle (regenerate with npm run build:js / watch:js)
+public/js/bundle.js
+public/js/bundle.js.map
+
 # Editor / OS
 .vscode/
 .idea/
